@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -73,6 +74,9 @@ public class ExcelView extends View {
     private Paint paintBorder;
     private Paint paintExtendBorder;
     private Paint paintText;
+    // 选中
+    private Paint paintTextSelect;
+    private Paint paintSelectBorder;
 
     private Context mContext;
 
@@ -90,10 +94,13 @@ public class ExcelView extends View {
     private List<Integer> selectList = new ArrayList<>();
 
     // 点击触发的单元
-    private Point nowSelectDown = new Point();
+    private Point nowSelectDown = new Point(-1, -1);
 
     // 放开触发的单元
-    private Point nowSelectUp = new Point();
+    private Point nowSelectUp = new Point(-2, -2);
+
+    // 选中的参数
+    private RectF selectTxy = new RectF();
 
     // 触摸辅助变量
     private float tableXDown = 0;
@@ -165,6 +172,23 @@ public class ExcelView extends View {
         paintBar.setColor(Color.parseColor("#999999"));
         paintBar.setAlpha(0);
 
+        paintTextSelect = new Paint();
+        paintTextSelect.setAntiAlias(true);
+        paintTextSelect.setDither(true);
+        paintTextSelect.setStyle(Paint.Style.FILL);
+        paintTextSelect.setStrokeCap(Paint.Cap.ROUND);
+        paintTextSelect.setTextSize(35);
+        paintTextSelect.setColor(Color.parseColor("#ff0000"));
+        paintTextSelect.setTypeface(Typeface.DEFAULT_BOLD);
+
+        paintSelectBorder = new Paint();
+        paintSelectBorder.setAntiAlias(true);
+        paintSelectBorder.setDither(true);
+        paintSelectBorder.setStyle(Paint.Style.STROKE);
+        paintSelectBorder.setStrokeCap(Paint.Cap.ROUND);
+        paintSelectBorder.setStrokeWidth(DisplayUtil.dip2px(mContext, 2));
+        paintSelectBorder.setColor(Color.parseColor("#0000FF"));
+
         scaleGestureDetector = new ScaleGestureDetector(mContext, new ScaleGesture());
 
     }
@@ -175,6 +199,8 @@ public class ExcelView extends View {
 
         canvas.drawRect(0, 0, (float) bigWidth, (float) bigHeight, paintBorder);
 
+        // --------------------------------------------------------------------------------------------
+        // 背景层
         int width = 0;
         for (int i = 0; i < excelDataTable.size(); i++) {
             width += excelDataTable.get(i).getWidth();
@@ -198,14 +224,6 @@ public class ExcelView extends View {
                         canvas.drawRect((float) gx, (float) gy, (float) gr, (float) gb, paintExtendBorder);
                     }
 
-                    // 选中显示
-                    if (nowSelectDown.x == nowSelectUp.x && nowSelectDown.y == nowSelectUp.y && i == nowSelectDown.x && j == nowSelectDown.y) {
-                        paintText.setColor(Color.parseColor("#ff0000"));
-                        paintText.setTypeface(Typeface.DEFAULT_BOLD);
-                    } else {
-                        paintText.setColor(Color.parseColor(excelDataTable.get(i).getRowChild().get(j).getTextColor()));
-                        paintText.setTypeface(Typeface.DEFAULT);
-                    }
                     // 赋予大小
                     paintText.setTextSize(excelDataTable.get(i).getRowChild().get(j).getTextSize());
 
@@ -215,10 +233,53 @@ public class ExcelView extends View {
                     int tx = (int) (width - excelDataTable.get(i).getWidth() / 2 - rect.width() / 2 + tableX + tableXMove);
                     int ty = (int) (height - excelDataTable.get(i).getRowChild().get(j).getHeight() / 2 + rect.height() / 2 + tableY + tableYMove);
 
-                    canvas.drawText(excelDataTable.get(i).getRowChild().get(j).getChildData(), tx, ty, paintText);
+                    // 选中显示
+                    if (!(nowSelectDown.x == nowSelectUp.x && nowSelectDown.y == nowSelectUp.y && i == nowSelectDown.x && j == nowSelectDown.y)) {
+                        canvas.drawText(excelDataTable.get(i).getRowChild().get(j).getChildData(), tx, ty, paintText);
+                    }
                 }
             }
         }
+
+        // --------------------------------------------------------------------------------------------
+        // 样式选中层
+        width = 0;
+        for (int i = 0; i < excelDataTable.size(); i++) {
+            width += excelDataTable.get(i).getWidth();
+            int height = 0;
+            for (int j = 0; j < excelDataTable.get(i).getRowChild().size(); j++) {
+                height += excelDataTable.get(i).getRowChild().get(j).getHeight();
+
+                double gx = width - excelDataTable.get(i).getWidth() + tableX + tableXMove;
+                double gy = height - excelDataTable.get(i).getRowChild().get(j).getHeight() + tableY + tableYMove;
+                double gr = width + tableX + tableXMove;
+                double gb = height + tableY + tableYMove;
+
+                // 只显示控件范围
+                if (gx > -excelDataTable.get(i).getWidth() && gx < bigWidth + excelDataTable.get(i).getWidth() &&
+                        gy > -excelDataTable.get(i).getRowChild().get(j).getHeight() && gy < bigHeight + excelDataTable.get(i).getRowChild().get(j).getHeight()) {
+
+                    // 赋予大小
+                    paintTextSelect.setTextSize(excelDataTable.get(i).getRowChild().get(j).getTextSize());
+
+                    @SuppressLint("DrawAllocation") Rect rect = new Rect();
+                    paintTextSelect.getTextBounds(excelDataTable.get(i).getRowChild().get(j).getChildData(),
+                            0, excelDataTable.get(i).getRowChild().get(j).getChildData().length(), rect);
+                    int tx = (int) (width - excelDataTable.get(i).getWidth() / 2 - rect.width() / 2 + tableX + tableXMove);
+                    int ty = (int) (height - excelDataTable.get(i).getRowChild().get(j).getHeight() / 2 + rect.height() / 2 + tableY + tableYMove);
+
+                    // 选中显示
+                    if (nowSelectDown.x == nowSelectUp.x && nowSelectDown.y == nowSelectUp.y && i == nowSelectDown.x && j == nowSelectDown.y) {
+                        canvas.drawText(excelDataTable.get(i).getRowChild().get(j).getChildData(), tx, ty, paintTextSelect);
+                        selectTxy.set((float) gx, (float) gy, (float) gr, (float) gb);
+                        canvas.drawRect(selectTxy, paintSelectBorder);
+                    }
+                }
+            }
+        }
+
+        // --------------------------------------------------------------------------------------------
+        // 互动条层
 
         double wBai = (bigWidth - DisplayUtil.dip2px(mContext, 6)) / (double) TABLE_WIDTH * bigWidth;
         double hBai = (bigHeight - DisplayUtil.dip2px(mContext, 6)) / (double) TABLE_HEIGHT * bigHeight;
@@ -240,6 +301,8 @@ public class ExcelView extends View {
                 (float) bigWidth - DisplayUtil.dip2px(mContext, 3),
                 (float) hBai + (float) yBarMove,
                 (float) BAR_WIDTH, (float) BAR_WIDTH, paintBar);
+
+        // --------------------------------------------------------------------------------------------
     }
 
     private Timer animTimer;
@@ -636,7 +699,7 @@ public class ExcelView extends View {
             }
             tWidthX += excelDataTable.get(i).getWidth();
         }
-        return new Point();
+        return new Point(-1, -1);
     }
 
     @Override
