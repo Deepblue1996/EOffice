@@ -23,10 +23,12 @@ import com.deep.eoffice.data.RowChild;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * Class - ExcelView - 多功能表格控件
- *
+ * <p>
  * TODO: 1.区间选择
  * TODO: 2.算术算法
  * TODO: 3.防抖缩放
@@ -137,7 +139,7 @@ public class ExcelView extends View {
         paintBorder.setStyle(Paint.Style.STROKE);
         paintBorder.setStrokeCap(Paint.Cap.ROUND);
         paintBorder.setStrokeWidth(DisplayUtil.dip2px(mContext, 1));
-        paintBorder.setColor(Color.parseColor("#FF0000"));
+        paintBorder.setColor(Color.parseColor("#FF6666"));
 
         paintExtendBorder = new Paint();
         paintExtendBorder.setAntiAlias(true);
@@ -145,7 +147,7 @@ public class ExcelView extends View {
         paintExtendBorder.setStyle(Paint.Style.STROKE);
         paintExtendBorder.setStrokeCap(Paint.Cap.ROUND);
         paintExtendBorder.setStrokeWidth(DisplayUtil.dip2px(mContext, 1));
-        paintExtendBorder.setColor(Color.parseColor("#F5f5f5"));
+        paintExtendBorder.setColor(Color.parseColor("#F0F0F0"));
 
         paintText = new Paint();
         paintText.setAntiAlias(true);
@@ -161,6 +163,7 @@ public class ExcelView extends View {
         paintBar.setStyle(Paint.Style.FILL);
         paintBar.setStrokeCap(Paint.Cap.ROUND);
         paintBar.setColor(Color.parseColor("#999999"));
+        paintBar.setAlpha(0);
 
         scaleGestureDetector = new ScaleGestureDetector(mContext, new ScaleGesture());
 
@@ -217,22 +220,83 @@ public class ExcelView extends View {
             }
         }
 
-        double wBai = bigWidth / (double) TABLE_WIDTH * bigWidth;
-        double hBai = bigHeight / (double) TABLE_HEIGHT * bigHeight;
+        double wBai = (bigWidth - DisplayUtil.dip2px(mContext, 6)) / (double) TABLE_WIDTH * bigWidth;
+        double hBai = (bigHeight - DisplayUtil.dip2px(mContext, 6)) / (double) TABLE_HEIGHT * bigHeight;
 
-        double xBarMove = (-(tableX + tableXMove)) / TABLE_WIDTH * (double) bigWidth;
-        double yBarMove = (-(tableY + tableYMove)) / TABLE_HEIGHT * (double) bigHeight;
+        double xBarMove = (-(tableX + tableXMove)) / TABLE_WIDTH * (double) (bigWidth - DisplayUtil.dip2px(mContext, 6));
+        double yBarMove = (-(tableY + tableYMove)) / TABLE_HEIGHT * (double) (bigHeight - DisplayUtil.dip2px(mContext, 6));
 
         //Lag.i("滑动块 xBarMove:" + xBarMove + " yBarMove:" + yBarMove);
 
         // 横向
-        canvas.drawRoundRect((float) xBarMove, (float) bigHeight - (float) BAR_WIDTH - DisplayUtil.dip2px(mContext, 3),
-                (float) wBai + (float) xBarMove, (float) bigHeight - DisplayUtil.dip2px(mContext, 3),
+        canvas.drawRoundRect((float) xBarMove + DisplayUtil.dip2px(mContext, 3),
+                (float) bigHeight - (float) BAR_WIDTH - DisplayUtil.dip2px(mContext, 3),
+                (float) wBai + (float) xBarMove,
+                (float) bigHeight - DisplayUtil.dip2px(mContext, 3),
                 (float) BAR_WIDTH, (float) BAR_WIDTH, paintBar);
         // 竖向
-        canvas.drawRoundRect((float) bigWidth - (float) BAR_WIDTH - DisplayUtil.dip2px(mContext, 3), (float) yBarMove,
-                (float) bigWidth - DisplayUtil.dip2px(mContext, 3), (float) hBai + (float) yBarMove,
+        canvas.drawRoundRect((float) bigWidth - (float) BAR_WIDTH - DisplayUtil.dip2px(mContext, 3),
+                (float) yBarMove + DisplayUtil.dip2px(mContext, 3),
+                (float) bigWidth - DisplayUtil.dip2px(mContext, 3),
+                (float) hBai + (float) yBarMove,
                 (float) BAR_WIDTH, (float) BAR_WIDTH, paintBar);
+    }
+
+    private Timer animTimer;
+    private Timer animEndTimer;
+
+    /**
+     * 互动条动画
+     *
+     * @param timeSecond
+     * @param show
+     */
+    private void startShowBar(int timeSecond, boolean show) {
+
+        float value = 1000.0f * timeSecond / 24 / 255;
+        final float[] vaAlpha = {0};
+
+        if (animTimer != null) {
+            animTimer.cancel();
+            animTimer = null;
+        }
+        if (show) {
+            vaAlpha[0] = 0;
+        } else {
+            vaAlpha[0] = 255;
+        }
+        paintBar.setAlpha((int) vaAlpha[0]);
+        invalidate();
+
+        animTimer = new Timer();
+        animTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (show) {
+                            vaAlpha[0] += value;
+                        } else {
+                            vaAlpha[0] -= value;
+                        }
+                        paintBar.setAlpha((int) vaAlpha[0]);
+                        invalidate();
+                        if (vaAlpha[0] > 255) {
+                            if (animTimer != null) {
+                                animTimer.cancel();
+                                animTimer = null;
+                            }
+                        } else if (vaAlpha[0] < 0) {
+                            if (animTimer != null) {
+                                animTimer.cancel();
+                                animTimer = null;
+                            }
+                        }
+                    }
+                });
+            }
+        }, (int) value, (int) value);
     }
 
     /**
@@ -592,6 +656,17 @@ public class ExcelView extends View {
 
                 nowSelectDown = downYuan(tableXDown, tableYDown);
 
+                // 增加延迟互动条动画
+                if (animEndTimer != null) {
+                    animEndTimer.cancel();
+                    animEndTimer = null;
+                    if (animTimer != null) {
+                        animTimer.cancel();
+                        animTimer = null;
+                    }
+                } else {
+                    startShowBar(10, true);
+                }
                 break;
             case MotionEvent.ACTION_MOVE:
                 tableXMove = event.getX() - tableXDown;
@@ -678,6 +753,25 @@ public class ExcelView extends View {
                 }
 
                 invalidate();
+
+                // 延迟动画动作
+                if (animEndTimer != null) {
+                    animEndTimer.cancel();
+                    animEndTimer = null;
+                }
+                if (animTimer != null) {
+                    animTimer.cancel();
+                    animTimer = null;
+                }
+                animEndTimer = new Timer();
+                animEndTimer.schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        startShowBar(10, false);
+                        animEndTimer.cancel();
+                        animEndTimer = null;
+                    }
+                }, 2000);
                 break;
             default:
                 break;
