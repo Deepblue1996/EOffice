@@ -612,7 +612,6 @@ public class ExcelView extends View {
     }
 
     /**
-     * TODO: 换算异常
      * 根据位置反馈序号
      *
      * @return
@@ -621,11 +620,11 @@ public class ExcelView extends View {
         // 实际表格的位置
         float tx = (-tableX) + x;
         float ty = (-tableY) + y;
-        float tWidthX = -tableX;
-        float tWidthW = -tableX;
+        float tWidthX = 0;
+        float tWidthW = 0;
         for (int i = 0; i < excelDataTable.size(); i++) {
-            float tHeightY = -tableY;
-            float tHeightH = -tableY;
+            float tHeightY = 0;
+            float tHeightH = 0;
             tWidthW += excelDataTable.get(i).getWidth();
             for (int j = 0; j < excelDataTable.get(i).getRowChild().size(); j++) {
                 // 换算当前单元格位置
