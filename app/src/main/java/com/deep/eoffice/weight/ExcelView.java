@@ -32,12 +32,6 @@ import java.util.TimerTask;
 /**
  * Class - ExcelView - 多功能表格控件
  * <p>
- * TODO: 1.区间选择
- * TODO: 2.算术算法
- * TODO: 3.防抖缩放
- * TODO: 4.筛选过滤
- * TODO: 5.滑动动画
- * <p>
  * Created by Deepblue on 2021/1/22 0029.
  */
 public class ExcelView extends View {
