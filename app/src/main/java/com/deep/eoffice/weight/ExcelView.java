@@ -1,5 +1,6 @@
 package com.deep.eoffice.weight;
 
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
@@ -13,6 +14,7 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
+import android.view.animation.DecelerateInterpolator;
 
 import androidx.annotation.Nullable;
 
@@ -34,6 +36,7 @@ import java.util.TimerTask;
  * TODO: 2.算术算法
  * TODO: 3.防抖缩放
  * TODO: 4.筛选过滤
+ * TODO: 5.滑动动画
  * <p>
  * Created by Deepblue on 2021/1/22 0029.
  */
@@ -107,6 +110,9 @@ public class ExcelView extends View {
     private float tableYDown = 0;
     private float tableXMove = 0;
     private float tableYMove = 0;
+
+    // 点击时间
+    private long tableDownTime = 0;
 
     // 世界坐标
     private float tableX = 0;
@@ -307,6 +313,7 @@ public class ExcelView extends View {
 
     private Timer animTimer;
     private Timer animEndTimer;
+    private final float[] vaAlpha = {0};
 
     /**
      * 互动条动画
@@ -317,7 +324,6 @@ public class ExcelView extends View {
     private void startShowBar(int timeSecond, boolean show) {
 
         float value = 1000.0f * timeSecond / 24 / 255;
-        final float[] vaAlpha = {0};
 
         if (animTimer != null) {
             animTimer.cancel();
@@ -335,31 +341,103 @@ public class ExcelView extends View {
         animTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                post(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (show) {
-                            vaAlpha[0] += value;
-                        } else {
-                            vaAlpha[0] -= value;
+                post(() -> {
+                    if (show) {
+                        vaAlpha[0] += value;
+                    } else {
+                        vaAlpha[0] -= value;
+                    }
+                    paintBar.setAlpha((int) vaAlpha[0]);
+                    invalidate();
+                    if (vaAlpha[0] > 255) {
+                        if (animTimer != null) {
+                            animTimer.cancel();
+                            animTimer = null;
                         }
-                        paintBar.setAlpha((int) vaAlpha[0]);
-                        invalidate();
-                        if (vaAlpha[0] > 255) {
-                            if (animTimer != null) {
-                                animTimer.cancel();
-                                animTimer = null;
-                            }
-                        } else if (vaAlpha[0] < 0) {
-                            if (animTimer != null) {
-                                animTimer.cancel();
-                                animTimer = null;
-                            }
+                    } else if (vaAlpha[0] < 0) {
+                        if (animTimer != null) {
+                            animTimer.cancel();
+                            animTimer = null;
                         }
                     }
                 });
             }
         }, (int) value, (int) value);
+    }
+
+    // 滑动动画
+    private ValueAnimator valueAnimatorX;
+    private ValueAnimator valueAnimatorY;
+
+    /**
+     * 滑动动画
+     *
+     * @param xSpanTemp  x距离
+     * @param ySpanTemp  y距离
+     * @param timeSecond 毫秒
+     * @param haveTime   秒
+     */
+    private void slidingToScreenXY(float xSpanTemp, float ySpanTemp, float timeSecond, float haveTime) {
+
+        float xSpan = xSpanTemp * (300 / timeSecond) * 2;
+        float ySpan = ySpanTemp * (300 / timeSecond) * 2;
+
+        if (xSpan > Math.abs(tableX)) {
+            xSpan = Math.abs(tableX);
+        }
+        if (ySpan > Math.abs(tableY)) {
+            ySpan = Math.abs(tableY);
+        }
+
+        if (xSpan < 0 && Math.abs(xSpan) > TABLE_WIDTH - bigWidth) {
+            xSpan = -(float) (TABLE_WIDTH - bigWidth);
+        }
+        if (ySpan < 0 && Math.abs(ySpan) > TABLE_HEIGHT - bigHeight) {
+            ySpan = -(float) (TABLE_HEIGHT - bigHeight);
+        }
+
+        valueAnimatorX = ValueAnimator.ofFloat(tableX, tableX + xSpan);
+        valueAnimatorX.addUpdateListener(animation -> {
+            tableX = (float) animation.getAnimatedValue();
+            invalidate();
+        });
+        valueAnimatorX.setInterpolator(new DecelerateInterpolator());
+        valueAnimatorX.setDuration((long) (haveTime * 1000));
+
+        valueAnimatorY = ValueAnimator.ofFloat(tableY, tableY + ySpan);
+        valueAnimatorY.addUpdateListener(animation -> {
+            tableY = (float) animation.getAnimatedValue();
+            invalidate();
+        });
+        valueAnimatorY.setInterpolator(new DecelerateInterpolator());
+        valueAnimatorY.setDuration((long) (haveTime * 1000));
+
+        if (bigWidth > TABLE_WIDTH) {
+            if (bigHeight < TABLE_HEIGHT) {
+                valueAnimatorY.start();
+            }
+        } else {
+            valueAnimatorY.start();
+        }
+        if (bigHeight > TABLE_HEIGHT) {
+            if (bigWidth < TABLE_WIDTH) {
+                valueAnimatorX.start();
+            }
+        } else {
+            valueAnimatorX.start();
+        }
+    }
+
+    /**
+     * 停止动画
+     */
+    private void stopSliding() {
+        if (valueAnimatorX != null && valueAnimatorX.isRunning()) {
+            valueAnimatorX.cancel();
+        }
+        if (valueAnimatorY != null && valueAnimatorY.isRunning()) {
+            valueAnimatorY.cancel();
+        }
     }
 
     /**
@@ -599,6 +677,11 @@ public class ExcelView extends View {
                 tableY = 0;
             }
         }
+
+        paintBorder.setStrokeWidth((float) DoubleUtil.multiply(DisplayUtil.dip2px(mContext, 1), zom));
+        paintSelectBorder.setStrokeWidth((float) DoubleUtil.multiply(DisplayUtil.dip2px(mContext, 1), zom));
+        paintExtendBorder.setStrokeWidth((float) DoubleUtil.multiply(DisplayUtil.dip2px(mContext, 1), zom));
+
         // 标准大小
         COL_WIDTH = (float) DoubleUtil.multiply(COL_WIDTH, zom);
         ROW_HEIGHT = (float) DoubleUtil.multiply(ROW_HEIGHT, zom);
@@ -628,6 +711,8 @@ public class ExcelView extends View {
         invalidate();
     }
 
+    // ----------------------------------------------------------------------------
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
@@ -645,7 +730,12 @@ public class ExcelView extends View {
         int specMode = MeasureSpec.getMode(measureSpec);
         int specSize = MeasureSpec.getSize(measureSpec);
 
-        bigWidth = specSize;
+        // wrap_parent
+        if (specMode == MeasureSpec.AT_MOST) {
+            bigWidth = DisplayUtil.sp2px(mContext, 200);
+        } else {
+            bigWidth = specSize;
+        }
 
         return (int) bigWidth;
     }
@@ -655,10 +745,20 @@ public class ExcelView extends View {
         int specMode = MeasureSpec.getMode(measureSpec);
         int specSize = MeasureSpec.getSize(measureSpec);
 
-        bigHeight = specSize;
+        // wrap_parent
+        if (specMode == MeasureSpec.AT_MOST) {
+            bigHeight = DisplayUtil.sp2px(mContext, 200);
+        } else {
+            bigHeight = specSize;
+        }
 
         return (int) bigHeight;
     }
+
+    // ----------------------------------------------------------------------------
+
+    // 开启一次缩放动作
+    private boolean isOpenScaleAction = false;
 
     /**
      * TODO: 出现抖动
@@ -670,6 +770,7 @@ public class ExcelView extends View {
         @Override
         public boolean onScale(ScaleGestureDetector detector) {
             zoomTable(detector.getScaleFactor(), detector.getFocusX(), detector.getFocusY());
+            isOpenScaleAction = true;
             return true;
         }
     }
@@ -713,6 +814,11 @@ public class ExcelView extends View {
 
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
+
+                stopSliding();
+
+                tableDownTime = System.currentTimeMillis();
+
                 tableXDown = event.getX();
                 tableYDown = event.getY();
 
@@ -731,6 +837,12 @@ public class ExcelView extends View {
                 }
                 break;
             case MotionEvent.ACTION_MOVE:
+
+                if (animTimer == null) {
+                    paintBar.setAlpha(255);
+                    invalidate();
+                }
+
                 tableXMove = event.getX() - tableXDown;
                 tableYMove = event.getY() - tableYDown;
 
@@ -779,6 +891,20 @@ public class ExcelView extends View {
                 invalidate();
                 break;
             case MotionEvent.ACTION_UP:
+
+                // 如果开启了缩放动作，取消放开动作
+                if (isOpenScaleAction) {
+                    tableXMove = 0;
+                    tableYMove = 0;
+                    isOpenScaleAction = false;
+                    return true;
+                }
+
+                // 小于500ms, 判断为滑动
+                if (System.currentTimeMillis() - tableDownTime < 300) {
+                    slidingToScreenXY(event.getX() - tableXDown, event.getY() - tableYDown,
+                            System.currentTimeMillis() - tableDownTime, 0.3f);
+                }
 
                 nowSelectUp = downYuan(event.getX(), event.getY());
 
