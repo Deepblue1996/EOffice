@@ -376,10 +376,10 @@ public class ExcelView extends View {
         float xSpan = xSpanTemp * (300 / timeSecond) * 2;
         float ySpan = ySpanTemp * (300 / timeSecond) * 2;
 
-        if (xSpan > Math.abs(tableX)) {
+        if (xSpan > -tableX) {
             xSpan = 0;
         }
-        if (ySpan > Math.abs(tableY)) {
+        if (ySpan > -tableY) {
             ySpan = 0;
         }
 
