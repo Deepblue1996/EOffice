@@ -909,8 +909,9 @@ public class ExcelView extends View {
                     tableY = 0;
                 }
 
-                // 小于500ms, 判断为滑动
-                if (System.currentTimeMillis() - tableDownTime < 300) {
+                // 小于300ms, 判断为滑动，否除点击操作
+                if (System.currentTimeMillis() - tableDownTime < 300
+                        && nowSelectDown.x != nowSelectUp.x && nowSelectDown.y != nowSelectUp.y) {
                     slidingToScreenXY(event.getX() - tableXDown, event.getY() - tableYDown,
                             System.currentTimeMillis() - tableDownTime, 0.3f);
                     return true;
