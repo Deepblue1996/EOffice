@@ -378,29 +378,31 @@ public class ExcelView extends View {
 
         //Lag.i("滑动 tableX:" + tableX + " tableY:" + tableY);
 
+        // 向右滑动
         if (xSpan > -tableX) {
             xSpan = 0;
             //Lag.i("滑动1 xSpan:" + xSpan + " ySpan:" + ySpan);
         }
+        // 向下滑动
         if (ySpan > -tableY) {
             ySpan = 0;
             //Lag.i("滑动2 xSpan:" + xSpan + " ySpan:" + ySpan);
         }
-
-        if (xSpan < 0 && Math.abs(xSpan) > TABLE_WIDTH - bigWidth) {
-            xSpan = -(float) (TABLE_WIDTH - bigWidth);
+        // 向左滑动
+        if (xSpan + tableX < -(TABLE_WIDTH - bigWidth)) {
+            xSpan = (float) -(TABLE_WIDTH - bigWidth);
             //Lag.i("滑动3 xSpan:" + xSpan + " ySpan:" + ySpan);
         }
-        if (ySpan < 0 && Math.abs(ySpan) > TABLE_HEIGHT - bigHeight) {
-            ySpan = -(float) (TABLE_HEIGHT - bigHeight);
+        // 向上滑动
+        if (ySpan + tableY < -(TABLE_HEIGHT - bigHeight)) {
+            ySpan = (float) -(TABLE_HEIGHT - bigHeight);
             //Lag.i("滑动4 xSpan:" + xSpan + " ySpan:" + ySpan);
         }
 
-        if(xSpan > 0) {
+        if (xSpan > 0) {
             xSpan = 0;
         }
-
-        if(ySpan > 0) {
+        if (ySpan > 0) {
             ySpan = 0;
         }
 
