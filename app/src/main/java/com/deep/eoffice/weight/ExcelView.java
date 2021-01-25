@@ -377,10 +377,10 @@ public class ExcelView extends View {
         float ySpan = ySpanTemp * (300 / timeSecond) * 2;
 
         if (xSpan > Math.abs(tableX)) {
-            xSpan = Math.abs(tableX);
+            xSpan = 0;
         }
         if (ySpan > Math.abs(tableY)) {
-            ySpan = Math.abs(tableY);
+            ySpan = 0;
         }
 
         if (xSpan < 0 && Math.abs(xSpan) > TABLE_WIDTH - bigWidth) {
@@ -390,7 +390,7 @@ public class ExcelView extends View {
             ySpan = -(float) (TABLE_HEIGHT - bigHeight);
         }
 
-        valueAnimatorX = ValueAnimator.ofFloat(tableX, tableX + xSpan);
+        valueAnimatorX = ValueAnimator.ofFloat(tableX, xSpan);
         valueAnimatorX.addUpdateListener(animation -> {
             tableX = (float) animation.getAnimatedValue();
             invalidate();
@@ -398,7 +398,7 @@ public class ExcelView extends View {
         valueAnimatorX.setInterpolator(new DecelerateInterpolator());
         valueAnimatorX.setDuration((long) (haveTime * 1000));
 
-        valueAnimatorY = ValueAnimator.ofFloat(tableY, tableY + ySpan);
+        valueAnimatorY = ValueAnimator.ofFloat(tableY, ySpan);
         valueAnimatorY.addUpdateListener(animation -> {
             tableY = (float) animation.getAnimatedValue();
             invalidate();
@@ -894,12 +894,6 @@ public class ExcelView extends View {
                     return true;
                 }
 
-                // 小于500ms, 判断为滑动
-                if (System.currentTimeMillis() - tableDownTime < 300) {
-                    slidingToScreenXY(event.getX() - tableXDown, event.getY() - tableYDown,
-                            System.currentTimeMillis() - tableDownTime, 0.3f);
-                }
-
                 nowSelectUp = downYuan(event.getX(), event.getY());
 
                 tableXMove = 0;
@@ -914,6 +908,14 @@ public class ExcelView extends View {
                     tableYMove = 0;
                     tableY = 0;
                 }
+
+                // 小于500ms, 判断为滑动
+                if (System.currentTimeMillis() - tableDownTime < 300) {
+                    slidingToScreenXY(event.getX() - tableXDown, event.getY() - tableYDown,
+                            System.currentTimeMillis() - tableDownTime, 0.3f);
+                    return true;
+                }
+
                 float leftX2 = tableX + tableXMove;
                 float leftY2 = tableY + tableYMove;
 
