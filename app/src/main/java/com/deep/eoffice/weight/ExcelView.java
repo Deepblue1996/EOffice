@@ -117,6 +117,9 @@ public class ExcelView extends View {
     // 临时扩展行数量
     private int yExtendNum = 0;
 
+    // 放大的倍数
+    private double baiWb = 1;
+
     // 放大手势
     private ScaleGestureDetector scaleGestureDetector;
 
@@ -373,8 +376,8 @@ public class ExcelView extends View {
      */
     private void slidingToScreenXY(float xSpanTemp, float ySpanTemp, float timeSecond, float haveTime) {
 
-        float xSpan = xSpanTemp * (300 / timeSecond) * 2;
-        float ySpan = ySpanTemp * (300 / timeSecond) * 2;
+        float xSpan = (float) (xSpanTemp * (200 / timeSecond) * (baiWb - 0.2*baiWb));
+        float ySpan = (float) (ySpanTemp * (200 / timeSecond) * (baiWb - 0.2*baiWb));
 
         //Lag.i("滑动 tableX:" + tableX + " tableY:" + tableY);
 
@@ -661,6 +664,8 @@ public class ExcelView extends View {
         double wB = DoubleUtil.divide(excelDataTable.get(0).getWidth(), excelData.get(0).getWidth());
         //double hB = DoubleUtil.divide(excelDataTable.get(0).getRowChild().get(0).getHeight(), excelData.get(0).getRowChild().get(0).getHeight());
 
+        baiWb = wB;
+
         Lag.i("正比: " + wB);
         Lag.i("焦点 fX:" + fX + " fY:" + fY);
 
@@ -927,11 +932,11 @@ public class ExcelView extends View {
                     tableY = 0;
                 }
 
-                // 范围判断是否点击
+                // 范围判断是否点击, 判断是否滑动动画
                 if (tableXDown < event.getX() - 20 || tableXDown > event.getX() + 20
-                        && tableYDown < event.getY() - 20 || tableYDown > event.getY() + 20) {
+                        || tableYDown < event.getY() - 20 || tableYDown > event.getY() + 20) {
                     // 小于300ms, 判断为滑动，否除点击操作
-                    if (System.currentTimeMillis() - tableDownTime < 300) {
+                    if (System.currentTimeMillis() - tableDownTime < 200) {
                         slidingToScreenXY(event.getX() - tableXDown, event.getY() - tableYDown,
                                 System.currentTimeMillis() - tableDownTime, 0.3f);
                         return true;
