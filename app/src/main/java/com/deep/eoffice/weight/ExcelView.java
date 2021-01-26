@@ -80,8 +80,6 @@ public class ExcelView extends View {
     private double bigWidth;
     private double bigHeight;
 
-    private boolean hasInit = false;
-
     // 绘画范围
     private List<ColChild> excelDataTable = new ArrayList<>();
     // 实际范围
@@ -376,45 +374,85 @@ public class ExcelView extends View {
      */
     private void slidingToScreenXY(float xSpanTemp, float ySpanTemp, float timeSecond, float haveTime) {
 
-        float xSpan = (float) (xSpanTemp * (200 / timeSecond) * (baiWb - 0.2*baiWb));
-        float ySpan = (float) (ySpanTemp * (200 / timeSecond) * (baiWb - 0.2*baiWb));
+        float xSpan = (float) (xSpanTemp * (200 / timeSecond) * (0.6 * baiWb));
+        float ySpan = (float) (ySpanTemp * (200 / timeSecond) * (0.6 * baiWb));
 
+        //Lag.i("滑动 xSpan:" + xSpan + " ySpan:" + ySpan);
         //Lag.i("滑动 tableX:" + tableX + " tableY:" + tableY);
+
+        boolean isTurnX = false;
+        boolean isTurnY = false;
 
         // 向右滑动
         if (xSpan > -tableX) {
             xSpan = 0;
             //Lag.i("滑动1 xSpan:" + xSpan + " ySpan:" + ySpan);
+            isTurnX = true;
         }
         // 向下滑动
         if (ySpan > -tableY) {
             ySpan = 0;
             //Lag.i("滑动2 xSpan:" + xSpan + " ySpan:" + ySpan);
+            isTurnY = true;
         }
         // 向左滑动
         if (xSpan + tableX < -(TABLE_WIDTH - bigWidth)) {
             xSpan = (float) -(TABLE_WIDTH - bigWidth);
             //Lag.i("滑动3 xSpan:" + xSpan + " ySpan:" + ySpan);
+            isTurnX = true;
         }
         // 向上滑动
         if (ySpan + tableY < -(TABLE_HEIGHT - bigHeight)) {
             ySpan = (float) -(TABLE_HEIGHT - bigHeight);
             //Lag.i("滑动4 xSpan:" + xSpan + " ySpan:" + ySpan);
+            isTurnY = true;
         }
 
-        if (xSpan > 0) {
+        if (-tableX < bigWidth && xSpan > 0) {
             xSpan = 0;
+            isTurnX = true;
         }
-        if (ySpan > 0) {
+        if (-tableY < bigHeight && ySpan > 0) {
             ySpan = 0;
+            isTurnY = true;
+        }
+
+        if (!isTurnX) {
+            xSpan += tableX;
+        }
+
+        if (!isTurnY) {
+            ySpan += tableY;
         }
 
         //Lag.i("滑动5 xSpan:" + xSpan + " ySpan:" + ySpan);
 
         valueAnimatorX = ValueAnimator.ofFloat(tableX, xSpan);
+        float finalXSpan = xSpan;
         valueAnimatorX.addUpdateListener(animation -> {
             tableX = (float) animation.getAnimatedValue();
             invalidate();
+
+            if (tableX == finalXSpan) {
+                // 延迟动画动作
+                if (animEndTimer != null) {
+                    animEndTimer.cancel();
+                    animEndTimer = null;
+                }
+                if (animTimer != null) {
+                    animTimer.cancel();
+                    animTimer = null;
+                }
+                animEndTimer = new Timer();
+                animEndTimer.schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        startShowBar(10, false);
+                        animEndTimer.cancel();
+                        animEndTimer = null;
+                    }
+                }, 2000);
+            }
         });
         valueAnimatorX.setInterpolator(new DecelerateInterpolator());
         valueAnimatorX.setDuration((long) (haveTime * 1000));
@@ -666,8 +704,8 @@ public class ExcelView extends View {
 
         baiWb = wB;
 
-        Lag.i("正比: " + wB);
-        Lag.i("焦点 fX:" + fX + " fY:" + fY);
+        //Lag.i("正比: " + wB);
+        //Lag.i("焦点 fX:" + fX + " fY:" + fY);
 
         // 限制缩小放大范围
         if (wB < 0.9 && zom < 1 || wB > 4 && zom > 1) {
@@ -686,17 +724,20 @@ public class ExcelView extends View {
             float zFy = (float) DoubleUtil.multiply(fY, zom) - fY;
             tableX = (float) DoubleUtil.multiply(tableX, zom) - (float) zFx;
             tableY = (float) DoubleUtil.multiply(tableY, zom) - (float) zFy;
-            // 避免越界
-            if (tableX > 0) {
-                tableX = 0;
-            }
-            if (tableY > 0) {
-                tableY = 0;
-            }
+        }
+        // 避免越界
+        if (tableX + tableXMove > 0) {
+            tableX = 0;
+            tableXDown = 0;
+        }
+        if (tableY + tableYDown > 0) {
+            tableY = 0;
+            tableYDown = 0;
         }
 
+        // 单元格缩放
         paintBorder.setStrokeWidth((float) DoubleUtil.multiply(DisplayUtil.dip2px(mContext, 1), zom));
-        paintSelectBorder.setStrokeWidth((float) DoubleUtil.multiply(DisplayUtil.dip2px(mContext, 1), zom));
+        paintSelectBorder.setStrokeWidth((float) DoubleUtil.multiply(DisplayUtil.dip2px(mContext, 2), zom));
         paintExtendBorder.setStrokeWidth((float) DoubleUtil.multiply(DisplayUtil.dip2px(mContext, 1), zom));
 
         // 标准大小
@@ -736,6 +777,7 @@ public class ExcelView extends View {
 
         int width = measureWidth(widthMeasureSpec);
         int height = measureHeight(heightMeasureSpec);
+        boolean hasInit = false;
         if (!hasInit) {
             initView(mContext);
         }
@@ -872,12 +914,12 @@ public class ExcelView extends View {
                 if (leftX > 0) {
                     tableXMove = 0;
                     tableX = 0;
-                    Lag.i("处于左边X边缘");
+                    //Lag.i("处于左边X边缘");
                 }
                 if (leftY > 0) {
                     tableYMove = 0;
                     tableY = 0;
-                    Lag.i("处于顶部Y边缘");
+                    //Lag.i("处于顶部Y边缘");
                 }
 
                 // 只有在边缘放开扩展
@@ -893,13 +935,13 @@ public class ExcelView extends View {
                 // 自动去除虚拟创建
                 // 判断是否已创建，判断位置，判断方向
                 if (xExtendNum > 1 && leftX < -(TABLE_WIDTH - bigWidth) + COL_WIDTH * KUO_SIZE && event.getX() - tableXDown > 0) {
-                    Lag.i("处于虚拟扩展右边-1 X边缘");
+                    //Lag.i("处于虚拟扩展右边-1 X边缘");
                     narrowWidth();
                     excelDataTable = reInitWidthHeight(excelDataTable);
                     runTable();
                 }
                 if (yExtendNum > 1 && leftY < -(TABLE_HEIGHT - bigHeight) + ROW_HEIGHT * KUO_SIZE && event.getY() - tableYDown > 0) {
-                    Lag.i("处于虚拟扩展底边-1 Y边缘");
+                    //Lag.i("处于虚拟扩展底边-1 Y边缘");
                     narrowHeight();
                     excelDataTable = reInitWidthHeight(excelDataTable);
                     runTable();
@@ -949,7 +991,7 @@ public class ExcelView extends View {
                 if (leftX2 < -(TABLE_WIDTH - bigWidth)) {
                     tableXMove = 0;
                     tableX = (float) -(TABLE_WIDTH - bigWidth);
-                    Lag.i("处于虚拟扩展右边X边缘");
+                    //Lag.i("处于虚拟扩展右边X边缘");
                     extendWidth();
                     excelDataTable = reInitWidthHeight(excelDataTable);
                     runTable();
@@ -957,7 +999,7 @@ public class ExcelView extends View {
                 if (leftY2 < -(TABLE_HEIGHT - bigHeight)) {
                     tableYMove = 0;
                     tableY = (float) -(TABLE_HEIGHT - bigHeight);
-                    Lag.i("处于虚拟扩展底边Y边缘");
+                    //Lag.i("处于虚拟扩展底边Y边缘");
                     extendHeight();
                     excelDataTable = reInitWidthHeight(excelDataTable);
                     runTable();
