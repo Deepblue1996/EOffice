@@ -455,7 +455,7 @@ public class ExcelView extends View {
             }
         });
         valueAnimatorX.setInterpolator(new DecelerateInterpolator());
-        valueAnimatorX.setDuration((long) (haveTime * 1000));
+        valueAnimatorX.setDuration((long) (haveTime * 2000));
 
         valueAnimatorY = ValueAnimator.ofFloat(tableY, ySpan);
         valueAnimatorY.addUpdateListener(animation -> {
@@ -463,7 +463,7 @@ public class ExcelView extends View {
             invalidate();
         });
         valueAnimatorY.setInterpolator(new DecelerateInterpolator());
-        valueAnimatorY.setDuration((long) (haveTime * 1000));
+        valueAnimatorY.setDuration((long) (haveTime * 2000));
 
         if (bigWidth > TABLE_WIDTH) {
             if (bigHeight < TABLE_HEIGHT) {
